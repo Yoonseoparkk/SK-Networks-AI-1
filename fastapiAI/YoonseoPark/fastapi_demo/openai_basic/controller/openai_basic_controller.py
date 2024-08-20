@@ -1,4 +1,4 @@
-from fastapi import Depends, status, APIRouter
+from fastapi import APIRouter, Depends, HTTPException, status, UploadFile, File
 from fastapi.responses import JSONResponse
 
 from openai_basic.controller.request_form.openai_talk_request_form import OpenAITalkRequestForm
@@ -11,9 +11,22 @@ async def injectOpenAIBasicService() -> OpenAIBasicServiceImpl:
 
 @openAIBasicRouter.post("/lets-talk")
 async def talkWithOpenAI(openAITalkRequestForm: OpenAITalkRequestForm,
-                         openAIBasicService: OpenAIBasicServiceImpl=
+                         openAIBasicService: OpenAIBasicServiceImpl =
                          Depends(injectOpenAIBasicService)):
+
+    print(f"controller -> talkWithOpenAI(): openAITalkRequestForm: {openAITalkRequestForm}")
 
     openAIGeneratedText = await openAIBasicService.letsTalk(openAITalkRequestForm.userSendMessage)
 
     return JSONResponse(content=openAIGeneratedText, status_code=status.HTTP_200_OK)
+
+@openAIBasicRouter.post("/openai-sentiment")
+async def sentimentAnalysisWithOpenAI(openAITalkRequestForm: OpenAITalkRequestForm,
+                         openAIBasicService: OpenAIBasicServiceImpl =
+                         Depends(injectOpenAIBasicService)):
+
+    print(f"controller -> sentimentAnalysisWithOpenAI(): openAITalkRequestForm: {openAITalkRequestForm}")
+
+    analyzedSentiment = await openAIBasicService.sentimentAnalysis(openAITalkRequestForm.userSendMessage)
+
+    return JSONResponse(content=analyzedSentiment, status_code=status.HTTP_200_OK)

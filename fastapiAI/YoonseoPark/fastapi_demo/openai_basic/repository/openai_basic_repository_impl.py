@@ -3,20 +3,22 @@ import os
 import httpx
 from dotenv import load_dotenv
 from fastapi import HTTPException
+import openai
+
 
 from openai_basic.repository.openai_basic_repository import OpenAIBasicRepository
+
 
 load_dotenv()
 
 openaiApiKey = os.getenv('OPENAI_API_KEY')
 if not openaiApiKey:
-    raise ValueError('API Key가 준비되어 있지 않습니다.')
-
+    raise ValueError('API Key가 준비되어 있지 않습니다!')
 
 class OpenAIBasicRepositoryImpl(OpenAIBasicRepository):
     headers = {
         'Authorization': f'Bearer {openaiApiKey}',
-        'Content-Type': 'application/json',
+        'Content-Type': 'application/json'
     }
 
     OPENAI_CHAT_COMPLETIONS_URL = "https://api.openai.com/v1/chat/completions"
@@ -25,7 +27,7 @@ class OpenAIBasicRepositoryImpl(OpenAIBasicRepository):
         data = {
             'model': 'gpt-3.5-turbo',
             'messages': [
-                {"role": "system", "content": "You are a helpful assistant."},
+                {"role": "system", "content": "You are a helpful assitant."},
                 {"role": "user", "content": userSendMessage}
             ]
         }
@@ -45,4 +47,15 @@ class OpenAIBasicRepositoryImpl(OpenAIBasicRepository):
 
             except (httpx.RequestError, ValueError) as e:
                 print(f"Request Error: {e}")
-                raise HTTPException(status_code=500, detail=f"Request Error: {e}")
+                raise HTTPException(status_code=500, detail=f"REquest Error: {e}")
+
+    def sentimentAnalysis(self, userSendMessage):
+        response = openai.chat.completions.create(
+            model="gpt-4",
+            messages=[
+                {"role": "system", "content": "You are a helpful assistant. 한글로 답변하자!"},
+                {"role": "user", "content": f"Analyze the sentiment of the following text:\n\n{userSendMessage}"}
+            ]
+        )
+        print(f"openai response: {response.json()}")
+        return response.choices[0].message.content.strip()
