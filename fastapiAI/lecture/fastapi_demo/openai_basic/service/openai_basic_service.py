@@ -9,3 +9,15 @@ class OpenAIBasicService(ABC):
     @abstractmethod
     def sentimentAnalysis(self, userSendMessage):
         pass
+
+    @abstractmethod
+    def audioAnalysis(self, audioFile):
+        pass
+
+    @abstractmethod
+    def textSimilarityAnalysis(self, paperTitleList, userRequestPaperTitle):
+        pass
+
+    @abstractmethod
+    def chatWithLangChain(self, userSendMessage):
+        pass
