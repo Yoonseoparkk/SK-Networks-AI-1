@@ -9,3 +9,7 @@ class OpenAIBasicService(ABC):
     @abstractmethod
     def sentimentAnalysis(self, userSendMessage):
         pass
+
+    @abstractmethod
+    def textSimilarityAnalysis(self, userSendMessage, userRequestPaperTitle):
+        pass

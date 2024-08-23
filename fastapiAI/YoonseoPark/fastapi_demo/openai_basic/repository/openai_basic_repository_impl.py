@@ -1,6 +1,8 @@
 import os
 
 import httpx
+import faiss
+import numpy as np
 from dotenv import load_dotenv
 from fastapi import HTTPException
 import openai
@@ -16,6 +18,8 @@ if not openaiApiKey:
     raise ValueError('API Key가 준비되어 있지 않습니다!')
 
 class OpenAIBasicRepositoryImpl(OpenAIBasicRepository):
+    SIMILARITY_TOP_RANK = 3
+
     headers = {
         'Authorization': f'Bearer {openaiApiKey}',
         'Content-Type': 'application/json'
@@ -59,3 +63,27 @@ class OpenAIBasicRepositoryImpl(OpenAIBasicRepository):
         )
         print(f"openai response: {response.json()}")
         return response.choices[0].message.content.strip()
+
+
+    def openAiBasedEmbedding(self, paperTitleList):
+        response = openai.embeddings.create(
+            input=paperTitleList,
+            model="text-embedding-ada-002"
+        )
+
+        print(f"response: {response}")
+        return response.data[0].embedding
+
+    def createL2FaissIndex(self, embeddingVectorDimension):
+        return faiss.IndexFlatL2(embeddingVectorDimension)
+
+    def similarityAnalysis(self, userRequestPaperTitle, faissIndex):
+        embeddingUserRequest = np.array(
+            self.openAiBasedEmbedding(userRequestPaperTitle)).astype('float32').reshape(1, -1)
+        distanceList, indexList = faissIndex.search(embeddingUserRequest, self.SIMILARITY_TOP_RANK)
+
+        return indexList[0], distanceList[0]
+
+
+
+
