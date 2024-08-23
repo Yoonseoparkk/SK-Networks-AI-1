@@ -40,38 +40,38 @@ from train_test_evaluation.controller.train_test_evaulation_controller import tr
 from transition_learning.controller.transition_learning_controller import transitionLearningRouter
 
 
-async def create_kafka_topics():
-    adminClient = AIOKafkaAdminClient(
-        bootstrap_servers='localhost:9092',
-        loop=asyncio.get_running_loop()
-    )
-
-    try:
-        await adminClient.start()
-
-        topics = [
-            NewTopic(
-                "test-topic",
-                num_partitions=1,
-                replication_factor=1,
-            ),
-            NewTopic(
-                "completion-topic",
-                num_partitions=1,
-                replication_factor=1,
-            ),
-        ]
-
-        for topic in topics:
-            try:
-                await adminClient.create_topics([topic])
-            except TopicAlreadyExistsError:
-                print(f"Topic '{topic.name}' already exists, skipping creation")
-
-    except Exception as e:
-        print(f"카프카 토픽 생성 실패: {e}")
-    finally:
-        await adminClient.close()
+# async def create_kafka_topics():
+#     adminClient = AIOKafkaAdminClient(
+#         bootstrap_servers='localhost:9092',
+#         loop=asyncio.get_running_loop()
+#     )
+#
+#     try:
+#         await adminClient.start()
+#
+#         topics = [
+#             NewTopic(
+#                 "test-topic",
+#                 num_partitions=1,
+#                 replication_factor=1,
+#             ),
+#             NewTopic(
+#                 "completion-topic",
+#                 num_partitions=1,
+#                 replication_factor=1,
+#             ),
+#         ]
+#
+#         for topic in topics:
+#             try:
+#                 await adminClient.create_topics([topic])
+#             except TopicAlreadyExistsError:
+#                 print(f"Topic '{topic.name}' already exists, skipping creation")
+#
+#     except Exception as e:
+#         print(f"카프카 토픽 생성 실패: {e}")
+#     finally:
+#         await adminClient.close()
 #
 #
 # # 현재는 deprecated 라고 나타나지만 lifespan 이란 것을 대신 사용하라고 나타나고 있음
@@ -80,6 +80,8 @@ async def create_kafka_topics():
 #
 import warnings
 
+from vector_db.database import getMongoDBPool
+
 warnings.filterwarnings("ignore", category=aiomysql.Warning)
 #
 async def lifespan(app: FastAPI):
@@ -87,37 +89,39 @@ async def lifespan(app: FastAPI):
     app.state.dbPool = await getMySqlPool()
     await createTableIfNecessary(app.state.dbPool)
 
-    # 비동기 I/O 정지 이벤트 감지
-    app.state.stop_event = asyncio.Event()
+    app.state.vectorDBPool = await getMongoDBPool()
 
-    # Kafka Producer (생산자) 구성
-    app.state.kafka_producer = AIOKafkaProducer(
-        bootstrap_servers='localhost:9092',
-        client_id='fastapi-kafka-producer'
-    )
-
-    # Kafka Consumer (소비자) 구성
-    app.state.kafka_consumer = AIOKafkaConsumer(
-        'completion-topic',
-        bootstrap_servers='localhost:9092',
-        group_id="my_group",
-        client_id='fastapi-kafka-consumer'
-    )
-
-    # 자동 생성했던 test-topic 관련 소비자
-    app.state.kafka_test_topic_consumer = AIOKafkaConsumer(
-        'test-topic',
-        bootstrap_servers='localhost:9092',
-        group_id="another_group",
-        client_id='fastapi-kafka-consumer'
-    )
-
-    await app.state.kafka_producer.start()
-    await app.state.kafka_consumer.start()
-    await app.state.kafka_test_topic_consumer.start()
-
-    # asyncio.create_task(consume(app))
-    asyncio.create_task(testTopicConsume(app))
+    # # 비동기 I/O 정지 이벤트 감지
+    # app.state.stop_event = asyncio.Event()
+    #
+    # # Kafka Producer (생산자) 구성
+    # app.state.kafka_producer = AIOKafkaProducer(
+    #     bootstrap_servers='localhost:9092',
+    #     client_id='fastapi-kafka-producer'
+    # )
+    #
+    # # Kafka Consumer (소비자) 구성
+    # app.state.kafka_consumer = AIOKafkaConsumer(
+    #     'completion-topic',
+    #     bootstrap_servers='localhost:9092',
+    #     group_id="my_group",
+    #     client_id='fastapi-kafka-consumer'
+    # )
+    #
+    # # 자동 생성했던 test-topic 관련 소비자
+    # app.state.kafka_test_topic_consumer = AIOKafkaConsumer(
+    #     'test-topic',
+    #     bootstrap_servers='localhost:9092',
+    #     group_id="another_group",
+    #     client_id='fastapi-kafka-consumer'
+    # )
+    #
+    # await app.state.kafka_producer.start()
+    # await app.state.kafka_consumer.start()
+    # await app.state.kafka_test_topic_consumer.start()
+    #
+    # # asyncio.create_task(consume(app))
+    # asyncio.create_task(testTopicConsume(app))
 
     try:
         yield
@@ -126,11 +130,14 @@ async def lifespan(app: FastAPI):
         app.state.dbPool.close()
         await app.state.dbPool.wait_closed()
 
-        app.state.stop_event.set()
+        app.state.vectorDBPool.close()
+        await app.state.vectorDBPool.wait_closed()
 
-        await app.state.kafka_producer.stop()
-        await app.state.kafka_consumer.stop()
-        await app.state.kafka_test_topic_consumer.stop()
+        # app.state.stop_event.set()
+        #
+        # await app.state.kafka_producer.stop()
+        # await app.state.kafka_consumer.stop()
+        # await app.state.kafka_test_topic_consumer.stop()
 
 app = FastAPI(lifespan=lifespan)
 
@@ -285,5 +292,5 @@ async def websocket_endpoint(websocket:WebSocket):
 
 if __name__ == "__main__":
     import uvicorn
-    asyncio.run(create_kafka_topics())
+    # asyncio.run(create_kafka_topics())
     uvicorn.run(app, host="192.168.0.31", port=33333)
