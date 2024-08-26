@@ -17,6 +17,7 @@ from convolution_neural_network.controller.cnn_controller import convolutionNeur
 from cot.cot_controller import cotRouter
 # from decision_tree.controller.decision_tree_controller import decisionTreeRouter
 from exponential_regression.controller.exponential_regression_controller import exponentialRegressionRouter
+from gdft.controller.gdft_controller import gameDataFineTuningRouter
 from gradient_descent.controller.gradient_descent_controller import gradientDescentRouter
 from kmeans.controller.kmeans_controller import kmeansRouter
 from langchain_interconnect.controller.langchain_controller import langchainRouter
@@ -224,6 +225,7 @@ app.include_router(transitionLearningRouter)
 app.include_router(openAIBasicRouter)
 app.include_router(langchainRouter)
 app.include_router(cotRouter)
+app.include_router(gameDataFineTuningRouter)
 
 
 async def testTopicConsume(app: FastAPI):
